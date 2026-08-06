@@ -185,6 +185,21 @@ $ uv sync --dev
 $ uv run openai-api-server-via-codex --help
 ```
 
+### Run with Docker
+
+From this checkout, run the server without any local Python tooling. Only
+Docker and a host Codex login (`codex login`) are required:
+
+```console
+$ docker compose up --build -d
+$ curl http://127.0.0.1:18080/healthz
+```
+
+The Compose setup bind-mounts `~/.codex` so the container borrows the host
+Codex login and writes refreshed tokens back. See
+[docs/docker.md](docs/docker.md) for configuration, plain `docker run` usage,
+and permission notes for Linux hosts.
+
 ## Requirements
 
 - Python 3.10+
