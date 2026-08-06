@@ -19,8 +19,28 @@ COPY openai_api_server_via_codex ./openai_api_server_via_codex
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --frozen --no-dev --no-editable
 
-# Runtime stage: copy only the virtualenv onto a slim Python base.
-FROM python:3.10-slim-bookworm
+# Login helper stage: bundles the official Codex CLI so `codex login` can run
+# in a container without Codex installed on the host. Not part of the default
+# build; used by the `codex-login` compose service (or --target login).
+FROM node:22-slim AS login
+
+ARG CODEX_VERSION=latest
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends socat \
+    && rm -rf /var/lib/apt/lists/* \
+    && npm install -g "@openai/codex@${CODEX_VERSION}"
+
+COPY --chmod=755 docker/codex-login-entrypoint.sh /usr/local/bin/codex-login-entrypoint
+
+ENV CODEX_HOME=/home/node/.codex
+USER node
+EXPOSE 1456
+ENTRYPOINT ["codex-login-entrypoint"]
+CMD ["login"]
+
+# Runtime stage: copy only the virtualenv onto a slim Python base. Keep this
+# stage last so a plain `docker build` produces the server image.
+FROM python:3.10-slim-bookworm AS runtime
 
 RUN groupadd --gid 1000 app \
     && useradd --uid 1000 --gid app --create-home app

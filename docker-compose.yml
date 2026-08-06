@@ -1,6 +1,8 @@
 services:
   openai-api-server-via-codex:
-    build: .
+    build:
+      context: .
+      target: runtime
     image: openai-api-server-via-codex:local
     container_name: openai-api-server-via-codex
     ports:
@@ -22,3 +24,24 @@ services:
     # 1000:1000, so the container can read and update the mounted Codex login:
     # user: "1000:1000"
     restart: unless-stopped
+
+  # One-shot login helper bundling the official Codex CLI. Not started by
+  # `docker compose up`; run it on demand to create ~/.codex/auth.json without
+  # installing Codex on the host:
+  #   docker compose run --rm --service-ports codex-login
+  # then open the printed URL in a browser on this machine. If your workspace
+  # allows device-code auth, no ports are needed:
+  #   docker compose run --rm codex-login login --device-auth
+  codex-login:
+    profiles: ["login"]
+    build:
+      context: .
+      target: login
+    image: openai-api-server-via-codex:codex-login
+    volumes:
+      - ${CODEX_HOME:-$HOME/.codex}:/home/node/.codex
+    ports:
+      # The Codex browser callback goes to http://localhost:1455; the container
+      # bridges 1456 to Codex's loopback-only login server. Published only when
+      # run with --service-ports.
+      - "127.0.0.1:1455:1456"
